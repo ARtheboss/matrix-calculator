@@ -192,6 +192,8 @@ class Parser{
 			try{
 				var ans = postfixToVal(infixToPostFix(s));
 				$("#po-"+this.id).html(ans);
+				if(ans.isMatrix() || ans.isBasis()) $("#po-"+this.id).css("cursor","pointer");
+				else $("#po-"+this.id).css("cursor","auto");
 			}catch(err){
 				$("#po-"+this.id).html(err);
 			}
