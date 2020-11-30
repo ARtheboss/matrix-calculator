@@ -17,19 +17,21 @@
 	background: #aaa;
 	height: 4vh;
 	font-size: 2vh;
-	line-height: 4vh;
+	display: flex;
 }
 .po{
 	margin: .5vw .5vh;
+	flex: 90%;
 }
 .variable{
 	background: #888;
 	display: inline-block;
 	height: 100%;
-	width: 4vh;
+	flex: 10%;
 	float: right;
 	text-align: center;
 	color: white;
+	line-height: 4vh;
 }
 .box{
 	width: 100%;

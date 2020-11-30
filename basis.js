@@ -61,6 +61,7 @@ class Basis{
 
 			var data = [];
 
+			var z = [];
 			for(var i = 0; i < this.data.length; i++){
 				var x = this.data[i].getPointTo()[0];
 				var y = this.data[i].getPointTo()[1];
@@ -87,6 +88,10 @@ class Basis{
 				  color: "rgb(0,0,0)"
 				});
 			}
+
+			data.push({
+
+			})
 
 			var layout = {
 				showlegend: false,

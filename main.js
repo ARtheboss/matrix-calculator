@@ -38,7 +38,12 @@ function updateAll(){
 function setVariable(v, i){
 	if(variables[v] != null) throw "Variable already defined";
 	variables[v] = i;
+	updateAll();
 	return v;
+}
+
+function fpef(n){
+	return Math.round(n * 1e7)/1e7;
 }
 
 createParser();

@@ -315,7 +315,35 @@ class Matrix{
 		return r;
 	}
 
+	lufactor(){
+		if(this.n != this.m) throw "Matrix is not a square,cannot factorize";
+		var l = new Identity(this.n);
+		var u = new Matrix(this.data);
+		for(var i = 0; i < this.m; i++){
+			for(var j = i+1; j < this.n; j++){
+				var r = u.data[j][i]/u.data[i][i];
+				l.data[j][i] = r;
+				for(var k = 0; k < this.m; k++){
+					u.data[j][k] -= u.data[i][k] * r;
+				}
+			}
+		}
+		var li = new List();
+		li.add(l);
+		li.add(u);
+		return li;
+	}
+
+	fpef(){
+		for(var i = 0; i < this.n; i++){
+			for(var j = 0; j < this.m; j++){
+				this.data[i][j] = fpef(this.data[i][j]);
+			}
+		}
+	}
+
 	json(){
+		this.fpef();
 		return JSON.stringify(this.data);
 	}
 

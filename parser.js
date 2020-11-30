@@ -22,41 +22,29 @@ var operators = {
     }
 }
 
-var funcStr = "rref(det(I(trace(col(null(";
+var funcStr = "rref(det(I(trace(col(null(lu(list(";
 
 Array.prototype.clean = function(parser) {
     for(var i = 0; i < this.length; i++) {
         if(this[i] === "" || this[i] == undefined) {
             this.splice(i, 1);
             i--;
-        }else if(this[i] == "ans"){
-        	this[i] = $("#po-"+(parser.id-1).toString()).html();
-        	if(i > 0 && this[i-1].isNum()){
-        		this.splice(i-1, 0, "*");
-        	}
-        }else if(variables[this[i]] != null){
-        	var id = variables[this[i]];
-        	this[i] = $("#po-"+id.toString()).html().toString();
-        	if(i > 0 && this[i-1].isNum()){
-        		this.splice(i, 0, "*");
-        		i++;
-        	}
         }
     }
     return this;
 }
 
-Array.prototype.combMatrix = function(){
+Array.prototype.combMatrix = function(p){
 	var matrixStack = [];
 	var cs = "";
 	for(var i = 0; i < this.length; i++){
 		if(matrixStack.length > 1){
 			if(this[i] == ","){
-				cs = postfixToVal(infixToPostFix(cs));
+				cs = postfixToVal(infixToPostFix(cs, p));
 				this[matrixStack[0]] += cs + ",";
 				cs = "";
 			}else if(this[i] == "]"){
-				cs = postfixToVal(infixToPostFix(cs));
+				cs = postfixToVal(infixToPostFix(cs, p));
 				this[matrixStack[0]] += cs + "]";
 				matrixStack.pop();
 				cs = "";
@@ -83,7 +71,7 @@ Array.prototype.combMatrix = function(){
 
 Array.prototype.impliedMultiplication = function(){
 	for(var i = 0; i < this.length-1; i++){
-    	if((this[i].isNum() || this[i].isMatrix()) && (funcStr.indexOf(this[i+1]) !== -1 || this[i+1].isMatrix())){
+    	if((this[i].isNum() || this[i].isMatrix() || this[i] == ")") && (funcStr.indexOf(this[i+1]) !== -1 || this[i+1].isMatrix() || this[i+1].match(/([a-z])/))){
     		this.splice(i+1, 0, "*");
     	}
     }
@@ -97,6 +85,21 @@ Array.prototype.impliedMultiplication = function(){
     return this;
 }
 
+Array.prototype.replaceVariables = function(parser) {
+	for(var i = 0; i < this.length; i++){
+		if(variables[this[i]] != null){
+	    	var id = variables[this[i]];
+	    	this[i] = $("#po-"+id.toString()).html().toString();
+	    }else if(this[i] == "ans"){
+        	this[i] = $("#po-"+(parser.id-1).toString()).html();
+        }else if(this[i] == ","){
+        	this.splice(i,1);
+        	i--;
+        }
+	}
+	return this;
+}
+
 String.prototype.isNum = function() {
     return !isNaN(parseFloat(this)) && isFinite(this) || this == "T";
 }
@@ -105,6 +108,9 @@ String.prototype.isMatrix = function() {
 }
 String.prototype.isBasis = function() {
     return this.substr(0,1) == "{";
+}
+String.prototype.isList = function() {
+    return this.substr(0,4) == "&lt;";
 }
 
 class Parser{
@@ -190,7 +196,7 @@ class Parser{
 			$("#po-"+this.id).html(0);
 		}else{
 			try{
-				var ans = postfixToVal(infixToPostFix(s));
+				var ans = postfixToVal(infixToPostFix(s, this));
 				$("#po-"+this.id).html(ans);
 				if(ans.isMatrix() || ans.isBasis()) $("#po-"+this.id).css("cursor","pointer");
 				else $("#po-"+this.id).css("cursor","auto");
@@ -203,16 +209,17 @@ class Parser{
 
 }
 
-function infixToPostFix(s){
+function infixToPostFix(s, p){
 	var outputQ = [];
 	var operatorStack = [];
 	s = s.replace(/\s+/g, "");
-    s = s.split(/(ans|col\(|rref\(|det\(|I\(|trace\(|null\(|[\+\-\*\/\^\(\)\[\,\]]|[a-z]|T)/).clean(this);
-    if(s.indexOf("[") != -1) s = s.combMatrix();
+    s = s.split(/(ans|col\(|rref\(|det\(|I\(|trace\(|null\(|lu\(|list\(|[\+\-\*\/\^\(\)\[\,\]]|[a-z]|T|!)/).clean(p);
+    if(s.indexOf("[") != -1) s = s.combMatrix(p);
     s = s.impliedMultiplication();
+    s = s.replaceVariables(p);
     for(var i = 0; i < s.length; i++){
     	var on = s[i];
-    	if(on.isNum() || on.isMatrix()){
+    	if(on.isNum() || on.isMatrix() || on == "!" || on.isBasis() || on.isList()){
     		outputQ.push(on);
     	} else if("^*/+-".indexOf(on) !== -1) {
     		if(operatorStack.length == 0){
@@ -249,13 +256,33 @@ function infixToPostFix(s){
     return outputQ;
 }
 
+var f = [];
+function factorial (n) {
+	if(n > 1e4) return "Infinity";
+	if (n == 0 || n == 1)
+		return 1;
+	if (f[n] > 0)
+		return f[n];
+	return f[n] = factorial(n-1) * n;
+}
+
+
 function postfixToVal(q){
 	var numStack = [];
 	for(var i = 0; i < q.length; i++){
-		if(q[i].isNum() || q[i].isMatrix()){
+		if(q[i].isNum() || q[i].isMatrix() || q[i].isBasis() || q[i].isList()){
 			numStack.push(q[i]);
-		}else if("^*/+-".indexOf(q[i]) !== -1){
-			if(numStack.length > 1){
+		}else if("^*/+-!".indexOf(q[i]) !== -1){
+			if(numStack.length > 0 && q[i] == "!"){
+				var n1 = numStack.pop();
+				if(n1.isNum()){
+					n1 = parseFloat(n1);
+					if(n1 % 1 != 0) throw "Invalid factorial";
+					numStack.push(factorial(n1).toString());
+				}else{
+					throw "Invalid factorial"
+				}
+			}else if(numStack.length > 1){
 				var n2 = numStack.pop();
 				var n1 = numStack.pop();
 				if(n1.isNum() && n2.isNum()){
@@ -376,6 +403,27 @@ function postfixToVal(q){
 				}else{
 					throw "Null Space requires one argument";
 				}
+			}else if(q[i] == "lu("){
+				if(numStack.length > 0){
+					var top = numStack.pop();
+					if(!top.isMatrix()) throw "Only matrices have can be LU factorized";
+					var nm = fromJson(top);
+					numStack.push(nm.lufactor().toString());
+				}else{
+					throw "LU factorization requires one argument";
+				}
+			}else if(q[i] == "list("){
+				if(numStack.length > 1){
+					var top = numStack.pop();
+					if(!top.isNum()) throw "Second arguemtn of list() must be number";
+					var n = parseFloat(top);
+					top = numStack.pop();
+					if(!top.isList()) throw "First argument of list() must be list";
+					var l = lFromJson(top);
+					numStack.push(l.get(n-1));
+				}else{
+					throw "LU factorization requires one argument";
+				}
 			}else{
 				throw "Invalid symbol";
 			}
@@ -383,5 +431,6 @@ function postfixToVal(q){
 			throw "Invalid symbol";
 		}
 	}
+	if(numStack.length != 1) throw "Invalid syntax";
 	return numStack.pop();
 }
