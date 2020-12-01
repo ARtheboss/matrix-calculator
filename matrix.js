@@ -33,6 +33,11 @@ class Matrix{
 		}
 		return v;
 	}
+	setCol(i, v){
+		for(var j = 0; j < this.n; j++){
+			this.data[i][j] = v.data[0][j];
+		}
+	}
 
 	transpose(){
 		var nm = dimMatrix(this.m, this.n);
@@ -51,7 +56,7 @@ class Matrix{
 	}
 
 	mult(val){
-		if(val == parseInt(val, 10)){
+		if(val == parseFloat(val)){
 			var nm = new Matrix(this.data);
 			for(var i = 0; i < this.n; i++){
 				for(var j = 0; j < this.m; j++){
@@ -87,6 +92,10 @@ class Matrix{
 			}
 			return ans;
 		}
+	}
+
+	independent(){
+		return this.det() != 0;
 	}
 
 	removeColRow(row, col){
@@ -359,6 +368,54 @@ class Matrix{
 		return this.colSpace().dim();
 	}
 
+	dot(v2){
+		if(this.m != 1 || v2.m != 1) throw "Only vectors have a dot product";
+		var s = 0;
+		for(var i = 0; i < this.n; i++)
+			s += this.data[i][0] * v2.data[i][0];
+		return s;
+	}
+	mag2(){
+		if(this.m != 1) throw "Only vectors have a magnitude";
+		var div = 0;
+		for(var i = 0; i < this.n; i++)
+			div += this.data[i][0] * this.data[i][0];
+		return div;
+	}
+	normalize(){
+		if(this.m != 1) throw "Only vectors can be normalized";
+		return this.mult(1/Math.sqrt(this.mag2()));
+	}
+
+	proj(v2){
+		if(this.m != 1 || v2.m != 1) throw "Only vectors can be projected";
+		var s = this.dot(v2);
+		var div = this.mag2();
+		return this.mult(s/div);
+	}
+
+	orthonormalset(){
+		if(!this.independent()) throw "Matrix is not independent";
+		var b = this.toBasis();
+		for(var i = 0; i < this.m; i++){
+			var ui = b.get(i);
+			for(var j = 0; j < i; j++){
+				ui = ui.subtract(b.get(j).proj(b.get(i)));
+			}
+			b.set(i, ui);
+		}
+		return b.normalize();
+	}
+
+	qrfactor(){
+		var q = this.orthonormalset().getMatrix();
+		var r = q.transpose().mult(this);
+		var l = new List();
+		l.add(q);
+		l.add(r);
+		return l;
+	}
+
 	graph(div){
 
 		if(this.n == 2){
@@ -447,6 +504,13 @@ class Matrix{
 
 		}
 
+	}
+
+	toBasis(){
+		var b = new Basis();
+		for(var i = 0; i < this.m; i++)
+			b.add(this.getCol(i));
+		return b;
 	}
 
 

@@ -17,6 +17,35 @@ class Basis{
 		if(this.data.length == 0) throw "No matrices in basis!";
 		return this.data[0].n;
 	}
+
+	getMatrix(){
+		var m = dimMatrix(this.R(), this.dim());
+		for(var i = 0; i < this.R(); i++){
+			for(var j = 0; j < this.dim(); j++){
+				m.data[i][j] = this.data[j].data[i][0];
+			}
+		}
+		return m;
+	}
+
+	independent(){
+		return this.getMatrix().independent();
+	}
+
+	get(i){
+		return this.data[i];
+	}
+	set(i, v){
+		if(!(v instanceof Matrix) || v.m != 1) throw "Basis was not supplied a valid vector";
+		this.data[i] = v;
+	}
+
+	normalize(){
+		for(var i = 0; i < this.dim(); i++)
+			this.set(i, this.get(i).normalize());
+		return this;
+	}
+
 	graph(div){
 
 		if(this.R() == 2){
