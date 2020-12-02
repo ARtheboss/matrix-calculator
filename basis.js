@@ -6,8 +6,13 @@ class Basis{
 	}
 
 	add(v){
-		if(!(v instanceof Matrix) || v.m != 1) throw "Basis was not supplied a valid vector";
-		this.data.push(v);
+		if((!(v instanceof Matrix) || v.m != 1) && !(v instanceof Basis) ) throw "Basis was not supplied a valid vector";
+		if(v instanceof Basis){
+			for(var i = 0; i < v.dim(); i++)
+				this.data.push(v.get(i));
+		}else{
+			this.data.push(v);
+		}
 	}
 
 	dim(){
@@ -46,6 +51,17 @@ class Basis{
 		return this;
 	}
 
+	trivial(){
+		for(var i = 0; i < this.dim(); i++){
+			var zeros = true;
+			for(var j = 0; j < this.R(); j++){
+				if(this.data[i].data[j][0] != 0) zeros = false;
+			}
+			if(zeros) return true;
+		}
+		return false;
+	}
+
 	graph(div){
 
 		if(this.R() == 2){
@@ -58,6 +74,7 @@ class Basis{
 			var xmax = 0;
 			for(var i = 0; i < this.data.length; i++){
 				var p = this.data[i].getPointTo();
+				if(p[0] == 0 && p[1] == 0) continue;
 				ymin = Math.min(p[1], ymin);
 				xmin = Math.min(p[0], xmin);
 				ymax = Math.max(p[1], ymax);
@@ -95,6 +112,7 @@ class Basis{
 				var x = this.data[i].getPointTo()[0];
 				var y = this.data[i].getPointTo()[1];
 				var z = this.data[i].getPointTo()[2];
+				if(x == 0 && y == 0 && z == 0) continue;
 				data.push({
 				  type: 'scatter3d',
 				  mode: 'lines',

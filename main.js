@@ -29,9 +29,14 @@ function setId(i, j){
 	$("#po-"+i).attr("id", "#po-"+j);
 }
 
+var updated = [];
+
 function updateAll(){
+	updated = [];
 	for(var i = 0; i < parsers.length; i++){
-		parsers[i].parse();
+		if(!updated.includes(parsers[i].id)){
+			parsers[i].parse();
+		}
 	}
 }
 

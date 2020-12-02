@@ -22,7 +22,7 @@ var operators = {
     }
 }
 
-var funcStr = "rref(det(I(trace(col(null(lu(list(";
+var funcStr = "rref(det(I(trace(col(null(lu(list(eigval(eigvec(";
 
 Array.prototype.clean = function(parser) {
     for(var i = 0; i < this.length; i++) {
@@ -71,7 +71,8 @@ Array.prototype.combMatrix = function(p){
 
 Array.prototype.impliedMultiplication = function(){
 	for(var i = 0; i < this.length-1; i++){
-    	if((this[i].isNum() || this[i].isMatrix() || this[i] == ")") && (funcStr.indexOf(this[i+1]) !== -1 || this[i+1].isMatrix() || this[i+1].match(/([a-z])/))){
+    	if((this[i].isNum() || this[i].isMatrix() || this[i] == ")" || (this[i].match(/([a-z])/) && this[i].length == 1) || this[i] == "ans") && (funcStr.indexOf(this[i+1]) !== -1 || this[i+1].isMatrix() || this[i+1].match(/([a-z])/))){
+    		console.log(this[i].isMatrix())
     		this.splice(i+1, 0, "*");
     	}
     }
@@ -85,13 +86,21 @@ Array.prototype.impliedMultiplication = function(){
     return this;
 }
 
-Array.prototype.replaceVariables = function(parser) {
+Array.prototype.replaceVariables = function(parser, from) {
 	for(var i = 0; i < this.length; i++){
 		if(variables[this[i]] != null){
 	    	var id = variables[this[i]];
-	    	this[i] = $("#po-"+id.toString()).html().toString();
+	    	if(id == parser.id) throw "Circular reference error";
+			if(!parsers[id].parse(from)) throw "Circular reference error";
+			var s = $("#po-"+id.toString()).html();
+			if(s == "Circular reference error") throw "Circular reference error";
+	    	this[i] = s;
 	    }else if(this[i] == "ans"){
-        	this[i] = $("#po-"+(parser.id-1).toString()).html();
+	    	var id = parser.id-1;
+			if(!parsers[id].parse(from)) throw "Circular reference error";
+			var s = $("#po-"+(parser.id-1).toString()).html();
+			if(s == "Circular reference error") throw "Circular reference error";
+        	this[i] = s;
         }else if(this[i] == ","){
         	this.splice(i,1);
         	i--;
@@ -190,33 +199,46 @@ class Parser{
 		return "<div class='parser' id='p-"+this.id+"'><input class='parse-in' id='pi-"+this.id+"'><div class='ans-container'><div class='parse-answer' id='pa-"+this.id+"'><span id='po-"+this.id+"' class='po'></span><span class='variable' id='v-"+this.id+"'></span></div><div class='box' id='box-"+this.id+"'></div></div></div>";
 	}
 
-	parse(){
+	parse(from = null){
+		if(from == null){
+			from = this.id;
+		}else if(from == this.id){
+			console.log(this.id)
+			$("#po-"+this.id).html("Circular reference error");
+			updated.push(this.id);
+			console.log($("#po-"+this.id).html())
+			return false;
+		}
 		var s = $("#pi-"+this.id).val();
 		if(s == ""){
 			$("#po-"+this.id).html(0);
 		}else{
+			var change = false;
 			try{
-				var ans = postfixToVal(infixToPostFix(s, this));
+				var ans = postfixToVal(infixToPostFix(s, this, from));
+				change = (ans != $("#po-"+this.id).html());
 				$("#po-"+this.id).html(ans);
 				if(ans.isMatrix() || ans.isBasis()) $("#po-"+this.id).css("cursor","pointer");
 				else $("#po-"+this.id).css("cursor","auto");
 			}catch(err){
 				$("#po-"+this.id).html(err);
 			}
-			if(this.graph) this.parserGraph(true);
+			if(this.graph && change) this.parserGraph(true);
 		}
+		return true;
 	}
 
 }
 
-function infixToPostFix(s, p){
+function infixToPostFix(s, p, f = null){
+	if(f == null) f = p.id;
 	var outputQ = [];
 	var operatorStack = [];
 	s = s.replace(/\s+/g, "");
-    s = s.split(/(ans|col\(|rref\(|det\(|I\(|trace\(|null\(|lu\(|list\(|[\+\-\*\/\^\(\)\[\,\]]|[a-z]|T|!)/).clean(p);
+    s = s.split(/(ans|col\(|rref\(|det\(|I\(|trace\(|null\(|lu\(|list\(|eigval\(|eigvec\(|[\+\-\*\/\^\(\)\[\,\]]|[a-z]|T|!)/).clean(p);
     if(s.indexOf("[") != -1) s = s.combMatrix(p);
     s = s.impliedMultiplication();
-    s = s.replaceVariables(p);
+    s = s.replaceVariables(p, f);
     for(var i = 0; i < s.length; i++){
     	var on = s[i];
     	if(on.isNum() || on.isMatrix() || on == "!" || on.isBasis() || on.isList()){
@@ -423,6 +445,24 @@ function postfixToVal(q){
 					numStack.push(l.get(n-1));
 				}else{
 					throw "LU factorization requires one argument";
+				}
+			}else if(q[i] == "eigval("){
+				if(numStack.length > 0){
+					var top = numStack.pop();
+					if(!top.isMatrix()) throw "Only matrices have eigenvalues";
+					var nm = fromJson(top);
+					numStack.push(nm.eigenValues().toString());
+				}else{
+					throw "Eigenvalue requires one argument";
+				}
+			}else if(q[i] == "eigvec("){
+				if(numStack.length > 0){
+					var top = numStack.pop();
+					if(!top.isMatrix()) throw "Only matrices have eigenvectors";
+					var nm = fromJson(top);
+					numStack.push(nm.eigenVectors().toString());
+				}else{
+					throw "Eigenvector requires one argument";
 				}
 			}else{
 				throw "Invalid symbol";
