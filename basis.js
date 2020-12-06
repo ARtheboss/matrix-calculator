@@ -32,6 +32,16 @@ class Basis{
 		}
 		return m;
 	}
+	getSquareMatrix(){
+		var d = Math.min(this.R(), this.dim());
+		var a = new Identity(d);
+		for(var i = 0; i < d; i++){
+			for(var j = 0; j < d; j++){
+				a.data[j][i] = this.data[i].data[j][0];
+			}
+		}
+		return a;
+	}
 
 	independent(){
 		return this.getMatrix().independent();
@@ -108,10 +118,15 @@ class Basis{
 			var data = [];
 
 			var z = [];
+			var minx = 0, maxx = 0, miny = 0, maxy = 0;
 			for(var i = 0; i < this.data.length; i++){
 				var x = this.data[i].getPointTo()[0];
 				var y = this.data[i].getPointTo()[1];
 				var z = this.data[i].getPointTo()[2];
+				minx = Math.min(minx, x);
+				maxx = Math.max(maxx, x);
+				miny = Math.min(miny, y);
+				maxy = Math.max(maxy, y);
 				if(x == 0 && y == 0 && z == 0) continue;
 				data.push({
 				  type: 'scatter3d',
@@ -123,7 +138,6 @@ class Basis{
 				  line: {
 				    width: 6,
 				    color: "#000",
-				    reversescale: false
 				  }
 				});
 				var l = Math.sqrt(x*x + y*y + z*z);
@@ -132,13 +146,48 @@ class Basis{
 				  x: [x], y: [y], z: [z],
 				  u: [x/l], v: [y/l], w: [z/l],
 				  showscale: false,
-				  color: "rgb(0,0,0)"
 				});
 			}
+			minx -= (minx != 0) ? 1 : 0;
+			maxx += (maxx != 0) ? 1 : 0;
+			miny -= (miny != 0) ? 1 : 0;
+			maxy += (maxy != 0) ? 1 : 0;
+			if(this.dim() == 2){
+				var xs = [], ys = [], zs = [];
+				var sm = this.getSquareMatrix();
+				var smi = sm.pow(-1);
+				var tm = this.getMatrix();
+				for(var y = miny; y <= maxy; y++){
+					var rowx = [], rowy = [], rowz = [];
+					for(var x = minx; x <= maxx; x++){
+						rowx.push(x);
+						rowy.push(y);
+						if(x == 0 && y == 0){
+							rowz.push(0);
+							continue;
+						}
+						var b = dimMatrix(2,1,0);
+						b.data[0][0] = x;
+						b.data[1][0] = y;
+						var xm = smi.mult(b);
+						var vf = tm.mult(xm);
+						rowz.push(vf.data[2][0]);
+					}
+					xs.push(rowx);
+					ys.push(rowy);
+					zs.push(rowz);
+				}
 
-			data.push({
 
-			})
+				data.push({
+					type: 'surface',
+					x: xs,
+					y: ys,
+					z: zs,
+					showscale: false,
+					opacity: 0.5,
+				})
+			}
 
 			var layout = {
 				showlegend: false,

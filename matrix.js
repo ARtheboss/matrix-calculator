@@ -118,7 +118,7 @@ class Matrix{
 		var col = 0; // column of current pivot position
 		var row = 0; // row of current pivot position
 		while(col < this.m && row < this.n){
-			if(this.data[row][col] == 0){ // find leftmost non-zero value (pivot position)
+			if(fpef(this.data[row][col]) == 0){ // find leftmost non-zero value (pivot position)
 				col++; 
 				continue;
 			}
@@ -138,6 +138,7 @@ class Matrix{
 			row++;
 			this.moveZeroRows();
 		}
+		this.data = this.fpef().data;
 	}
 	moveZeroRows(){
 		var d = [];
@@ -177,7 +178,7 @@ class Matrix{
 			col++;
 			row++;
 		}
-		this.data = this.moveZeroRows();
+		this.moveZeroRows();
 	}
 
 	pivotColumns(){ // takes in rrefed matrix
@@ -308,9 +309,9 @@ class Matrix{
 	}
 
 	colSpace(){
-		var efed = new Matrix(this.data);
-		efed.ef();
-		var pivot = efed.pivotColumns();
+		var rrefed = new Matrix(this.data);
+		rrefed.rref();
+		var pivot = rrefed.pivotColumns();
 		var r = new Basis();
 		for(var i = 0; i < pivot.length; i++){
 			r.add(this.getCol(pivot[i]));
